@@ -30,6 +30,7 @@ class ProjectTests(unittest.TestCase):
         self.assertEqual(len(nb["cells"]), 1)
         code = "".join(nb["cells"][0]["source"])
         self.assertIn('GH_REPO = "redk13/gradle"', code)
+        self.assertIn('sys.modules.pop("pipeline", None)', code)
         self.assertNotRegex(code, re.compile(r"vidmap|english-tenses-tutor", re.I))
         compile(code, "BAARLE_SINGLE_CELL", "exec")
 
