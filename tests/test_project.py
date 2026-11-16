@@ -43,7 +43,9 @@ class ProjectTests(unittest.TestCase):
         self.assertIn("MIXKIT_FILES", source)
         self.assertIn("https://assets.mixkit.co/music/preview/mixkit-secret-garden-595.mp3", source)
         self.assertIn("direct_file", json.dumps(config["assets"]["music"]))
-        self.assertEqual(set(config["assets"]["sfx"]), {"whoosh", "paper", "footstep", "stamp"})
+        self.assertEqual(set(config["assets"]["sfx"]), {"whoosh", "paper", "footstep"})
+        self.assertNotIn("freesound.org", source)
+        self.assertNotIn("pixabay.com/music/", source)
 
 
 if __name__ == "__main__":
