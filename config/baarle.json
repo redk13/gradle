@@ -38,11 +38,18 @@
     {"visual": "timeline and final joke with compact source credits", "on_screen": "THE WORLD'S SLOWEST GROUP PROJECT"}
   ],
   "assets": {
-    "enclave_map": "https://commons.wikimedia.org/wiki/Special:FilePath/Baarle-Nassau_-_Baarle-Hertog-en.svg",
-    "house": "https://commons.wikimedia.org/wiki/Special:FilePath/House_Shared_By_Two_Countries.jpg",
-    "house_fallback": "https://commons.wikimedia.org/wiki/Special:FilePath/Baarle-Hertog_Loveren_2_-_150095_-_onroerenderfgoed.jpg",
-    "shop": "https://commons.wikimedia.org/wiki/Special:FilePath/Baarle-Hertog_and_Baarle-Nassau_border.jpg",
-    "pavement": "https://commons.wikimedia.org/wiki/Special:FilePath/B-NL_International_Border_at_Baarle.jpg",
+    "wikimedia_commons": {
+      "api": "https://commons.wikimedia.org/w/api.php",
+      "lookup": "Action API query with prop=imageinfo and iiprop=url|extmetadata",
+      "user_agent": "BaarleBorderVideoBot/1.0 (https://github.com/redk13/gradle/issues)",
+      "files": {
+        "map": "File:Baarle-Nassau_-_Baarle-Hertog-en.svg",
+        "house": "File:House_Shared_By_Two_Countries.jpg",
+        "house_fallback": "File:Baarle-Hertog_Loveren_2_-_150095_-_onroerenderfgoed.jpg",
+        "shop": "File:Baarle-Hertog_and_Baarle-Nassau_border.jpg",
+        "pavement": "File:B-NL_International_Border_at_Baarle.jpg"
+      }
+    },
     "natural_earth": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson",
     "music": {
       "title": "Secret Garden",
