@@ -46,23 +46,33 @@ Attribution is retained in the final credits and this file. Altered CC BY-SA pho
 
 ## Real recorded music and SFX
 
-- **Music:** “Calm Suspenseful Background Music [loop]” by Kuzu420.
-  - Page: https://pixabay.com/music/suspense-calm-suspenseful-background-music-loop-433787/
-  - Published Nov. 10, 2025; 57-second MP3; Pixabay Content License.
-- **Whoosh:** “Whoosh - Weighted string - Airy whistle” by Sadiquecat.
-  - Page: https://freesound.org/people/Sadiquecat/sounds/855733/
-  - Recorded May 24, 2026; CC0.
-- **Paper rustle:** “paperrustle.wav / Notebook Page Flipping” by Mihacappy.
-  - Page: https://freesound.org/people/Mihacappy/sounds/814247/
-  - Recorded June 30, 2025; CC0.
-- **Stamp:** “stamp_4presses.wav / Old mechanical stamp, pressing four times” by Mihacappy.
-  - Page: https://freesound.org/people/Mihacappy/sounds/814248/
-  - Recorded June 30, 2025; CC0.
-- **Footsteps:** “Footsteps Different Variations Street 2” by Rudmer_Rotteveel.
-  - Page: https://freesound.org/people/Rudmer_Rotteveel/sounds/316919/
-  - Recorded July 20, 2015; CC0.
+All sound files are actual catalogue recordings downloaded as direct files into temporary Google Colab storage. The pipeline does not generate music or sound effects with code.
 
-The notebook resolves actual downloadable MP3 previews from the named source pages at runtime. No music or sound effects are composed or synthesized by code. If a source page no longer offers its expected licence or preview, the run stops instead of fabricating a substitute.
+### Music
+
+- **“Secret Garden” — Eugenio Mininni**, a playful plucked-string film-score track suited to the dry-comedy tone.
+- Official catalogue page: https://mixkit.co/free-stock-music/mood/humorous/
+- Direct file used by Colab: https://assets.mixkit.co/music/preview/mixkit-secret-garden-595.mp3
+- Licence: **Mixkit Stock Music Free License**. Mixkit permits use in social-media video posts and YouTube videos; attribution is not required but is retained here voluntarily.
+- Licence text: https://mixkit.co/license/modal/musicFree/
+
+### Recorded sound effects
+
+- **“Air woosh”** — Mixkit; direct file: https://assets.mixkit.co/active_storage/sfx/1489/1489-preview.mp3
+  - Catalogue: https://mixkit.co/free-sound-effects/whoosh/
+  - Licence: Mixkit Sound Effects Free License.
+- **“Stiff paper book paging”** — Mixkit; direct file: https://assets.mixkit.co/active_storage/sfx/1103/1103-preview.mp3
+  - Catalogue: https://mixkit.co/free-sound-effects/paper/
+  - Licence: Mixkit Sound Effects Free License.
+- **“Footsteps on heels on the pavement”** — Mixkit; direct file: https://assets.mixkit.co/active_storage/sfx/542/542-preview.mp3
+  - Catalogue: https://mixkit.co/free-sound-effects/footsteps/
+  - Licence: Mixkit Sound Effects Free License.
+- **“stamp_4presses.wav / Old mechanical stamp, pressing four times” — Mihacappy**, recorded June 30, 2025.
+  - Page: https://freesound.org/people/Mihacappy/sounds/814248/
+  - Licence: **Creative Commons 0 (CC0)**, explicitly stated by the creator.
+
+Mixkit's sound-effects licence permits use in social-media video posts and commercial projects and does not require attribution; its files may not be redistributed as standalone stock or bundled as a reusable stock pack. CC0 stamp audio requires no attribution, but the creator and sound are identified here. If a direct file URL stops returning an audio file, the Colab run halts with the failing URL rather than synthesizing a replacement.
+
 
 ## Software and model licences
 
