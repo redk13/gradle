@@ -36,6 +36,21 @@ class ProjectTests(unittest.TestCase):
     def test_pipeline_syntax(self) -> None:
         compile((ROOT / "src" / "pipeline.py").read_text(encoding="utf-8"), "pipeline.py", "exec")
 
+
+    def test_commons_uses_imageinfo_and_descriptive_user_agent(self) -> None:
+        source = (ROOT / "src" / "pipeline.py").read_text(encoding="utf-8")
+        config = json.loads((ROOT / "config" / "baarle.json").read_text(encoding="utf-8"))
+        self.assertIn('WIKIMEDIA_API_URL = "https://commons.wikimedia.org/w/api.php"', source)
+        self.assertIn('"iiprop": "url|extmetadata"', source)
+        self.assertIn('"iiextmetadatafilter": "LicenseShortName|LicenseUrl"', source)
+        self.assertIn("BaarleBorderVideoBot/1.0", source)
+        self.assertIn("https://upload.wikimedia.org/", source)
+        self.assertNotIn("Mozilla/5.0", source)
+        self.assertNotIn("commons.wikimedia.org/wiki/File:", source)
+        commons = config["assets"]["wikimedia_commons"]
+        self.assertEqual(commons["api"], "https://commons.wikimedia.org/w/api.php")
+        self.assertEqual(set(commons["files"]), {"map", "house", "house_fallback", "shop", "pavement"})
+
     def test_audio_sources_bypass_blocked_pixabay_page(self) -> None:
         source = (ROOT / "src" / "pipeline.py").read_text(encoding="utf-8")
         config = json.loads((ROOT / "config" / "baarle.json").read_text(encoding="utf-8"))
