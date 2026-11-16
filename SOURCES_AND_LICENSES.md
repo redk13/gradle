@@ -17,7 +17,7 @@
 - **Author:** Tos.
 - **Source:** https://commons.wikimedia.org/wiki/File:Baarle-Nassau_-_Baarle-Hertog-en.svg
 - **Licence:** Public domain, as marked on the source file.
-- **Direct asset:** https://commons.wikimedia.org/wiki/Special:FilePath/Baarle-Nassau_-_Baarle-Hertog-en.svg
+- **Runtime download:** Colab queries the official Commons Action API (`https://commons.wikimedia.org/w/api.php`) using `prop=imageinfo`, `iiprop=url|extmetadata`; it checks `LicenseShortName` and downloads the returned original media URL from `upload.wikimedia.org`. No file-description HTML is scraped.
 
 ## Photographs
 
@@ -25,17 +25,17 @@
    - Creator: Jack Soley.
    - Source: https://commons.wikimedia.org/wiki/File:House_Shared_By_Two_Countries.jpg
    - Licence: Creative Commons Attribution-ShareAlike 3.0 Unported (CC BY-SA 3.0).
-   - Direct asset: https://commons.wikimedia.org/wiki/Special:FilePath/House_Shared_By_Two_Countries.jpg
+   - **Runtime download:** Resolved through Commons `imageinfo`; the API-provided original media URL is fetched from `upload.wikimedia.org`.
 2. **Baarle-Hertog and Baarle-Nassau border.jpg**
    - Creator: Kayfabebaale.
    - Source: https://commons.wikimedia.org/wiki/File:Baarle-Hertog_and_Baarle-Nassau_border.jpg
    - Licence: Creative Commons Attribution 4.0 International (CC BY 4.0).
-   - Direct asset: https://commons.wikimedia.org/wiki/Special:FilePath/Baarle-Hertog_and_Baarle-Nassau_border.jpg
+   - **Runtime download:** Resolved through Commons `imageinfo`; the API-provided original media URL is fetched from `upload.wikimedia.org`.
 3. **B-NL International Border at Baarle.jpg**
    - Creator: Jack Soley.
    - Source: https://commons.wikimedia.org/wiki/File:B-NL_International_Border_at_Baarle.jpg
    - Licence: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0).
-   - Direct asset: https://commons.wikimedia.org/wiki/Special:FilePath/B-NL_International_Border_at_Baarle.jpg
+   - **Runtime download:** Resolved through Commons `imageinfo`; the API-provided original media URL is fetched from `upload.wikimedia.org`.
 4. **Baarle-Hertog Loveren 2 - 150095 - onroerenderfgoed.jpg** (alternate cutout candidate)
    - Creator: Vlaamse Gemeenschap.
    - Source: https://commons.wikimedia.org/wiki/File:Baarle-Hertog_Loveren_2_-_150095_-_onroerenderfgoed.jpg
@@ -76,3 +76,11 @@ The Mixkit SFX free licence permits use in social-media videos, YouTube, educati
 - **Chatterbox TTS:** https://github.com/resemble-ai/chatterbox — MIT. Upstream states that Chatterbox became retired research and is no longer maintained as of August 2026. Package API reference: https://huggingface.co/ResembleAI/chatterbox
 - **BiRefNet-HR:** https://huggingface.co/ZhengPeng7/BiRefNet_HR — MIT; model card specifies 2048×2048 high-resolution inference.
 - **FFmpeg:** https://ffmpeg.org/ — used only in Colab for the final H.264/AAC render.
+
+## Wikimedia request policy
+
+The Colab downloader identifies itself as `BaarleBorderVideoBot/1.0` and supplies the project issue URL as contact information. It does not copy a browser User-Agent. One small Commons Action API request retrieves only the five selected files' media URLs and licence short names; those returned media URLs are then downloaded sequentially. If Commons still returns HTTP 403 with this identifying header, the pipeline stops and reports the denial rather than trying to evade it.
+
+- Wikimedia API access policy: https://www.mediawiki.org/wiki/Wikimedia_APIs/Access_policy
+- Wikimedia User-Agent policy: https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_User-Agent_Policy/en
+- Imageinfo API documentation: https://www.mediawiki.org/wiki/API:Imageinfo
