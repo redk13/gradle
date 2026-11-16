@@ -1,0 +1,111 @@
+name: Fetch Baarle media assets
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-assets:
+    if: "!contains(github.event.head_commit.message, '[assets-bot]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Download and verify source assets
+        run: |
+          python - <<'PY'
+          import hashlib, json, re, time
+          from pathlib import Path
+          from urllib.parse import quote
+          import requests
+
+          root = Path("assets")
+          root.mkdir(exist_ok=True)
+          ua = "BaarleBorderVideoBot/1.0 (https://github.com/redk13/gradle) asset-fetch"
+          session = requests.Session()
+          session.headers.update({"User-Agent": ua, "Accept": "*/*"})
+
+          commons = {
+              "map": ("File:Baarle-Nassau_-_Baarle-Hertog-en.svg", "baarle.svg", ["Public domain"]),
+              "house": ("File:House_Shared_By_Two_Countries.jpg", "house.jpg", ["Attribution-ShareAlike 3.0", "CC BY-SA 3.0"]),
+              "house_alt": ("File:Baarle-Hertog_Loveren_2_-_150095_-_onroerenderfgoed.jpg", "house_alt.jpg", ["Attribution 4.0", "CC BY 4.0"]),
+              "shop": ("File:Baarle-Hertog_and_Baarle-Nassau_border.jpg", "shop.jpg", ["Attribution 4.0", "CC BY 4.0"]),
+              "pavement": ("File:B-NL_International_Border_at_Baarle.jpg", "pavement.jpg", ["Attribution-ShareAlike 4.0", "CC BY-SA 4.0"]),
+          }
+          titles = "|".join(v[0] for v in commons.values())
+          response = session.get("https://commons.wikimedia.org/w/api.php", params={
+              "action":"query", "format":"json", "formatversion":2, "prop":"imageinfo",
+              "titles":titles, "iiprop":"url|extmetadata",
+              "iiextmetadatafilter":"LicenseShortName|LicenseUrl"
+          }, timeout=60)
+          response.raise_for_status()
+          payload = response.json()
+          if payload.get("error"):
+              raise RuntimeError(f"Commons API error: {payload['error']}")
+          pages = { " ".join(p["title"].replace("_"," ").split()).casefold(): p
+                    for p in payload["query"]["pages"] }
+          manifest = {"assets": {}}
+          for key, (title, filename, accepted) in commons.items():
+              page = pages.get(" ".join(title.replace("_"," ").split()).casefold())
+              if not page or page.get("missing") is not None:
+                  raise RuntimeError(f"Commons file missing: {title}")
+              info = (page.get("imageinfo") or [None])[0]
+              if not info or not info.get("url","").startswith("https://upload.wikimedia.org/"):
+                  raise RuntimeError(f"Invalid Commons media URL: {title}")
+              ext = info.get("extmetadata") or {}
+              lic = re.sub(r"<[^>]*>", "", str((ext.get("LicenseShortName") or {}).get("value",""))).strip()
+              if not any(marker.casefold() in lic.casefold() for marker in accepted):
+                  raise RuntimeError(f"Licence rejected for {title}: {lic!r}; expected {accepted}")
+              r = session.get(info["url"], timeout=120)
+              r.raise_for_status()
+              if len(r.content) < 10000:
+                  raise RuntimeError(f"File too small: {filename} ({len(r.content)} bytes)")
+              (root / filename).write_bytes(r.content)
+              manifest["assets"][filename] = {
+                  "source": info["descriptionurl"], "author": (ext.get("Artist") or {}).get("value",""),
+                  "license": lic, "license_url": (ext.get("LicenseUrl") or {}).get("value",""),
+                  "bytes": len(r.content), "sha256": hashlib.sha256(r.content).hexdigest()
+              }
+
+          other = {
+              "countries.geojson": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson",
+              "music.mp3": "https://assets.mixkit.co/music/preview/mixkit-secret-garden-595.mp3",
+              "whoosh.mp3": "https://assets.mixkit.co/active_storage/sfx/1489/1489-preview.mp3",
+              "paper.mp3": "https://assets.mixkit.co/active_storage/sfx/1103/1103-preview.mp3",
+              "footstep.mp3": "https://assets.mixkit.co/active_storage/sfx/542/542-preview.mp3",
+          }
+          for filename, url in other.items():
+              r = session.get(url, timeout=120)
+              r.raise_for_status()
+              minimum = 10000 if filename.endswith(".geojson") else 1200
+              if len(r.content) < minimum or "text/html" in r.headers.get("Content-Type","").lower():
+                  raise RuntimeError(f"Invalid download for {filename}: {len(r.content)} bytes, {r.headers.get('Content-Type')}")
+              (root / filename).write_bytes(r.content)
+              manifest["assets"][filename] = {
+                  "source": url, "license": "Natural Earth public domain" if filename.endswith(".geojson") else "Mixkit Free License",
+                  "bytes": len(r.content), "sha256": hashlib.sha256(r.content).hexdigest()
+              }
+
+          (root / "ASSET_SOURCES.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+          print("Downloaded and verified:")
+          for name, meta in manifest["assets"].items():
+              print(f"- {name}: {meta['bytes']} bytes; sha256={meta['sha256']}")
+          PY
+      - name: Commit downloaded assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/
+          if git diff --cached --quiet; then
+            echo "No asset changes."
+            exit 0
+          fi
+          git commit -m "[assets-bot] Add verified Baarle media assets"
+          git push
