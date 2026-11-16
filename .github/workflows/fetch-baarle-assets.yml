@@ -84,7 +84,8 @@ jobs:
               "footstep.mp3": "https://assets.mixkit.co/active_storage/sfx/542/542-preview.mp3",
           }
           for filename, url in other.items():
-              r = session.get(url, timeout=120)
+              headers = {"Referer":"https://mixkit.co/", "Origin":"https://mixkit.co", "User-Agent":"Mozilla/5.0 (compatible; BaarleBorderVideoBot/1.0)"} if filename.endswith(".mp3") else None
+              r = session.get(url, headers=headers, timeout=120)
               r.raise_for_status()
               minimum = 10000 if filename.endswith(".geojson") else 1200
               if len(r.content) < minimum or "text/html" in r.headers.get("Content-Type","").lower():
