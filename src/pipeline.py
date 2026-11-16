@@ -50,6 +50,33 @@ WIKIMEDIA_ASSETS = {
 ASSET_URLS = {
     "geo":"https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson"
 }
+# Real recorded music and SFX; direct file URLs, not storefront page scraping.
+MIXKIT_FILES = {
+    "music": {
+        "url": "https://assets.mixkit.co/music/preview/mixkit-secret-garden-595.mp3",
+        "source": "https://mixkit.co/free-stock-music/mood/humorous/",
+        "title": "Secret Garden — Eugenio Mininni",
+        "license": "Mixkit Stock Music Free License",
+    },
+    "whoosh": {
+        "url": "https://assets.mixkit.co/active_storage/sfx/1489/1489-preview.mp3",
+        "source": "https://mixkit.co/free-sound-effects/whoosh/",
+        "title": "Air woosh",
+        "license": "Mixkit Sound Effects Free License",
+    },
+    "paper": {
+        "url": "https://assets.mixkit.co/active_storage/sfx/1103/1103-preview.mp3",
+        "source": "https://mixkit.co/free-sound-effects/paper/",
+        "title": "Stiff paper book paging",
+        "license": "Mixkit Sound Effects Free License",
+    },
+    "footstep": {
+        "url": "https://assets.mixkit.co/active_storage/sfx/542/542-preview.mp3",
+        "source": "https://mixkit.co/free-sound-effects/footsteps/",
+        "title": "Footsteps on heels on the pavement",
+        "license": "Mixkit Sound Effects Free License",
+    },
+}
 # These expected licence labels are compared with the API's LicenseShortName.
 LICENCE_MARKERS = {
     "File:Baarle-Nassau_-_Baarle-Hertog-en.svg":["Public domain"],
