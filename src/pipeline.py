@@ -1,9 +1,8 @@
 """Colab-only video pipeline. No synthesis, cutout or render runs on GitHub."""
 from __future__ import annotations
 
-import json, math, random, re, subprocess, textwrap
+import json, math, random, subprocess, textwrap
 from pathlib import Path
-from urllib.parse import urljoin
 import numpy as np
 import requests
 import soundfile as sf
@@ -50,9 +49,7 @@ MIXKIT_FILES = {
   "license":"Mixkit Sound Effects Free License"
  }
 }
-PAGES = {
- "stamp":"https://freesound.org/people/Mihacappy/sounds/814248/"
-}
+
 LICENCE_MARKERS = {
  "https://commons.wikimedia.org/wiki/File:Baarle-Nassau_-_Baarle-Hertog-en.svg":["Public domain"],
  "https://commons.wikimedia.org/wiki/File:House_Shared_By_Two_Countries.jpg":["Attribution-ShareAlike 3.0","CC BY-SA 3.0"],
@@ -113,11 +110,6 @@ def verify_licences():
         raise PipelineError("Music asset is not marked with the Mixkit Stock Music Free License.")
     if any("Mixkit Sound Effects Free License" not in x["license"] for k,x in MIXKIT_FILES.items() if k != "music"):
         raise PipelineError("SFX asset is not marked with the Mixkit Sound Effects Free License.")
-    # The remaining Freesound stamp is CC0. A missing page/marker stops the run.
-    for key, page in PAGES.items():
-        html = get(page, 60).text.lower()
-        if "creative commons 0" not in html and "cc0" not in html:
-            raise PipelineError("Expected CC0 marker missing: " + page)
 
 def download(url, path, min_bytes=1000):
     r = get(url)
@@ -130,25 +122,6 @@ def download(url, path, min_bytes=1000):
     path.write_bytes(r.content)
     return path
 
-def media_preview_url(page):
-    html = get(page, 60).text.replace("\\/", "/").replace("\\u0026", "&")
-    # Freesound pages embed generated preview URLs in their script/JSON data.
-    pats = [
-        r"https?://cdn\.freesound\.org/previews/[^\"' <>]+?\.mp3(?:\?[^\"' <>]*)?",
-        r"https?://freesound\.org/data/previews/[^\"' <>]+?\.mp3(?:\?[^\"' <>]*)?",
-        r'"preview-hq-mp3"\s*:\s*"([^"]+)"',
-        r'"preview-lq-mp3"\s*:\s*"([^"]+)"'
-    ]
-    found = []
-    for pat in pats:
-        found += re.findall(pat, html, flags=re.I)
-    found = [urljoin(page, u.replace("\\/", "/")) for u in found]
-    found = list(dict.fromkeys(found))
-    if not found:
-        raise PipelineError("No real recorded Freesound MP3 preview was exposed by the source page: " + page)
-    found.sort(key=lambda u: ("hq" in u.lower(), len(u)), reverse=True)
-    return found[0]
-
 def obtain_assets(root):
     verify_licences()
     a = root / "assets"; a.mkdir(parents=True, exist_ok=True)
@@ -158,10 +131,6 @@ def obtain_assets(root):
     # This bypasses the storefront page that returned HTTP 403 in Colab.
     for key, item in MIXKIT_FILES.items():
         out[key] = download(item["url"], a / (key+".mp3"), 1200)
-    # Stamp is a separate, independently licensed CC0 recording on Freesound.
-    for key, page in PAGES.items():
-        url = media_preview_url(page)
-        out[key] = download(url, a / (key+".mp3"), 1200)
     return out
 
 def font(size, bold=True):
@@ -340,7 +309,7 @@ def build_scenes(a, root, cutout):
     lines=["MAP: TOS / WIKIMEDIA COMMONS — PUBLIC DOMAIN",
            "HOUSE: JACK SOLEY / CC BY-SA 3.0  •  SHOP: KAYFABEBAALE / CC BY 4.0",
            "PAVEMENT: JACK SOLEY / CC BY-SA 4.0  •  NATURAL EARTH / PUBLIC DOMAIN",
-           "MUSIC: KUZU420 / PIXABAY  •  RECORDED SFX: FREESOUND CC0"]
+           "MUSIC: EUGENIO MININNI / MIXKIT  •  RECORDED SFX: MIXKIT"]
     for i,line in enumerate(lines): centered(d,(CW//2,2760+i*65),line,font(30),C["ink"])
     p=scenes/"08_final_credits.png"; im.convert("RGB").save(p); result.append(p)
     return result
@@ -414,8 +383,8 @@ def mix_audio(voice, assets, seconds, sr, work):
     mix=v.overlay(music)
     starts=[]; cursor=0.0
     for sec in seconds: starts.append(cursor); cursor+=sec-.095
-    placements=[("whoosh",starts[0]+1.0),("paper",starts[2]+.7),("stamp",starts[3]+1.3),
-                ("whoosh",starts[4]+1.6),("footstep",starts[6]+.6),("stamp",starts[7]+2.0)]
+    placements=[("whoosh",starts[0]+1.0),("paper",starts[2]+.7),("whoosh",starts[3]+1.3),
+                ("whoosh",starts[4]+1.6),("footstep",starts[6]+.6),("paper",starts[7]+2.0)]
     for key,at in placements:
         s=AudioSegment.from_file(assets[key]).set_frame_rate(sr).set_channels(2).apply_gain(-19)
         if int(at*1000)<total: mix=mix.overlay(s,position=int(at*1000))
