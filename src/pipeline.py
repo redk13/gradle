@@ -1,7 +1,7 @@
 """Colab-only video pipeline. No synthesis, cutout or render runs on GitHub."""
 from __future__ import annotations
 
-import json, math, random, subprocess, textwrap
+import html, json, math, random, re, subprocess, textwrap
 from pathlib import Path
 import numpy as np
 import requests
@@ -13,49 +13,50 @@ from shapely.geometry import shape, box, Polygon, MultiPolygon, GeometryCollecti
 W, H, FPS = 1080, 1920, 60
 CW, CH = W * 2, H * 2
 C = {"ocean":"#69D5E9","land":"#F7FBFF","ink":"#172D55","be":"#F3B33D","nl":"#8E66D9","accent":"#FF6A4A","dark":"#10223E","white":"#FFFFFF"}
+WIKIMEDIA_API_URL = "https://commons.wikimedia.org/w/api.php"
+# Wikimedia explicitly asks automated clients to identify themselves and not
+# impersonate browsers. The repository URL is the operator contact point.
+WIKIMEDIA_USER_AGENT = (
+    "BaarleBorderVideoBot/1.0 "
+    "(https://github.com/redk13/gradle/issues) requests"
+)
+WIKIMEDIA_ASSETS = {
+    "map": {
+        "title": "File:Baarle-Nassau_-_Baarle-Hertog-en.svg",
+        "filename": "baarle.svg",
+        "min_bytes": 10000,
+    },
+    "house": {
+        "title": "File:House_Shared_By_Two_Countries.jpg",
+        "filename": "house.jpg",
+        "min_bytes": 10000,
+    },
+    "house_alt": {
+        "title": "File:Baarle-Hertog_Loveren_2_-_150095_-_onroerenderfgoed.jpg",
+        "filename": "house_alt.jpg",
+        "min_bytes": 10000,
+    },
+    "shop": {
+        "title": "File:Baarle-Hertog_and_Baarle-Nassau_border.jpg",
+        "filename": "shop.jpg",
+        "min_bytes": 10000,
+    },
+    "pavement": {
+        "title": "File:B-NL_International_Border_at_Baarle.jpg",
+        "filename": "pavement.jpg",
+        "min_bytes": 10000,
+    },
+}
 ASSET_URLS = {
- "map":"https://commons.wikimedia.org/wiki/Special:FilePath/Baarle-Nassau_-_Baarle-Hertog-en.svg",
- "house":"https://commons.wikimedia.org/wiki/Special:FilePath/House_Shared_By_Two_Countries.jpg",
- "house_alt":"https://commons.wikimedia.org/wiki/Special:FilePath/Baarle-Hertog_Loveren_2_-_150095_-_onroerenderfgoed.jpg",
- "shop":"https://commons.wikimedia.org/wiki/Special:FilePath/Baarle-Hertog_and_Baarle-Nassau_border.jpg",
- "pavement":"https://commons.wikimedia.org/wiki/Special:FilePath/B-NL_International_Border_at_Baarle.jpg",
- "geo":"https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson"
+    "geo":"https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson"
 }
-# Direct file downloads avoid scraping pages that may reject Colab with HTTP 403.
-# The Mixkit track and SFX are real recorded catalogue assets; no audio is synthesized.
-MIXKIT_FILES = {
- "music": {
-  "url":"https://assets.mixkit.co/music/preview/mixkit-secret-garden-595.mp3",
-  "source":"https://mixkit.co/free-stock-music/mood/humorous/",
-  "title":"Secret Garden — Eugenio Mininni",
-  "license":"Mixkit Stock Music Free License"
- },
- "whoosh": {
-  "url":"https://assets.mixkit.co/active_storage/sfx/1489/1489-preview.mp3",
-  "source":"https://mixkit.co/free-sound-effects/whoosh/",
-  "title":"Air woosh",
-  "license":"Mixkit Sound Effects Free License"
- },
- "paper": {
-  "url":"https://assets.mixkit.co/active_storage/sfx/1103/1103-preview.mp3",
-  "source":"https://mixkit.co/free-sound-effects/paper/",
-  "title":"Stiff paper book paging",
-  "license":"Mixkit Sound Effects Free License"
- },
- "footstep": {
-  "url":"https://assets.mixkit.co/active_storage/sfx/542/542-preview.mp3",
-  "source":"https://mixkit.co/free-sound-effects/footsteps/",
-  "title":"Footsteps on heels on the pavement",
-  "license":"Mixkit Sound Effects Free License"
- }
-}
-
+# These expected licence labels are compared with the API's LicenseShortName.
 LICENCE_MARKERS = {
- "https://commons.wikimedia.org/wiki/File:Baarle-Nassau_-_Baarle-Hertog-en.svg":["Public domain"],
- "https://commons.wikimedia.org/wiki/File:House_Shared_By_Two_Countries.jpg":["Attribution-ShareAlike 3.0","CC BY-SA 3.0"],
- "https://commons.wikimedia.org/wiki/File:Baarle-Hertog_and_Baarle-Nassau_border.jpg":["Attribution 4.0","CC BY 4.0"],
- "https://commons.wikimedia.org/wiki/File:B-NL_International_Border_at_Baarle.jpg":["Attribution-ShareAlike 4.0","CC BY-SA 4.0"],
- "https://commons.wikimedia.org/wiki/File:Baarle-Hertog_Loveren_2_-_150095_-_onroerenderfgoed.jpg":["Attribution 4.0","CC BY 4.0"]
+    "File:Baarle-Nassau_-_Baarle-Hertog-en.svg":["Public domain"],
+    "File:House_Shared_By_Two_Countries.jpg":["Attribution-ShareAlike 3.0","CC BY-SA 3.0"],
+    "File:Baarle-Hertog_and_Baarle-Nassau_border.jpg":["Attribution 4.0","CC BY 4.0"],
+    "File:B-NL_International_Border_at_Baarle.jpg":["Attribution-ShareAlike 4.0","CC BY-SA 4.0"],
+    "File:Baarle-Hertog_Loveren_2_-_150095_-_onroerenderfgoed.jpg":["Attribution 4.0","CC BY 4.0"]
 }
 SCRIPT_TITLE = "Baarle: The Border That Runs Through Your Front Door"
 
@@ -74,42 +75,118 @@ def seed_all(seed=42):
     torch.backends.cudnn.deterministic = True
 
 def get(url, timeout=90):
+    # Do not spoof Chrome/Safari. Wikimedia requires a descriptive app identity
+    # and a contact URL for automated requests.
     headers = {
-        "User-Agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/128 Safari/537.36",
-        "Accept":"*/*"
+        "User-Agent": WIKIMEDIA_USER_AGENT,
+        "Accept": "*/*",
     }
     last_error = None
     for attempt in range(3):
         try:
             r = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True)
             if r.status_code in (429,500,502,503,504) and attempt < 2:
-                import time; time.sleep(2 ** attempt); continue
+                import time
+                retry_after = r.headers.get("Retry-After")
+                try:
+                    delay = min(30, max(1, int(retry_after))) if retry_after else 2 ** attempt
+                except ValueError:
+                    delay = 2 ** attempt
+                time.sleep(delay)
+                continue
             if r.status_code == 403:
+                if "wikimedia.org" in url.lower():
+                    raise PipelineError(
+                        "Wikimedia returned HTTP 403 even with the descriptive "
+                        "BaarleBorderVideoBot User-Agent. This is now an access "
+                        "denial from Wikimedia's API/media host, not a blocked "
+                        "file-description-page scrape. URL: " + url
+                    )
                 raise PipelineError(
-                    "The media host denied this request (HTTP 403). The pipeline now uses direct Mixkit CDN "
-                    "files instead of the Pixabay storefront. Check the exact source URL and retry from Colab: " + url
+                    "The media host denied this direct asset request (HTTP 403). URL: " + url
                 )
             r.raise_for_status()
             return r
+        except PipelineError:
+            raise
         except requests.RequestException as exc:
             last_error = exc
             if attempt < 2:
-                import time; time.sleep(2 ** attempt)
+                import time
+                time.sleep(2 ** attempt)
     raise PipelineError(f"Download failed after retries for {url}: {last_error}")
 
+def _normalise_commons_title(title):
+    return " ".join(str(title).replace("_", " ").split()).casefold()
+
 def verify_licences():
-    # Image-source licences are checked against their Wikimedia file pages.
-    for page, markers in LICENCE_MARKERS.items():
-        html = get(page, 60).text.lower()
-        if not any(m.lower() in html for m in markers):
-            raise PipelineError("Expected public licence marker not found; stop and review: " + page)
-    # Mixkit's free music and SFX catalogues have separate official licences.
-    # Their direct CDN files are used, so Colab does not need to scrape the
-    # Mixkit storefront (the former Pixabay page scrape returned HTTP 403).
-    if any("Mixkit Stock Music Free License" not in x["license"] for k,x in MIXKIT_FILES.items() if k == "music"):
-        raise PipelineError("Music asset is not marked with the Mixkit Stock Music Free License.")
-    if any("Mixkit Sound Effects Free License" not in x["license"] for k,x in MIXKIT_FILES.items() if k != "music"):
-        raise PipelineError("SFX asset is not marked with the Mixkit Sound Effects Free License.")
+    # Resolve all five Commons files in one small Action API request. Request
+    # only the file URL and the two licence metadata fields we actually use.
+    titles = "|".join(item["title"] for item in WIKIMEDIA_ASSETS.values())
+    params = {
+        "action": "query",
+        "format": "json",
+        "formatversion": 2,
+        "prop": "imageinfo",
+        "titles": titles,
+        "iiprop": "url|extmetadata",
+        "iiextmetadatafilter": "LicenseShortName|LicenseUrl",
+    }
+    response = requests.get(
+        WIKIMEDIA_API_URL,
+        params=params,
+        headers={"User-Agent": WIKIMEDIA_USER_AGENT, "Accept": "application/json"},
+        timeout=60,
+    )
+    if response.status_code == 403:
+        raise PipelineError(
+            "Wikimedia Commons Action API returned HTTP 403 despite a descriptive "
+            "User-Agent. Stop here; do not bypass the block. API URL: " + response.url
+        )
+    response.raise_for_status()
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise PipelineError("Wikimedia Commons API did not return valid JSON.") from exc
+    if payload.get("error"):
+        raise PipelineError("Wikimedia Commons API error: " + json.dumps(payload["error"])[:1200])
+
+    pages = payload.get("query", {}).get("pages", [])
+    pages_by_title = {
+        _normalise_commons_title(page.get("title", "")): page
+        for page in pages
+    }
+    verified = {}
+    for key, spec in WIKIMEDIA_ASSETS.items():
+        page = pages_by_title.get(_normalise_commons_title(spec["title"]))
+        if not page or page.get("missing") is not None:
+            raise PipelineError("Wikimedia Commons file not found: " + spec["title"])
+        versions = page.get("imageinfo") or []
+        if not versions:
+            raise PipelineError("Wikimedia Commons returned no imageinfo for: " + spec["title"])
+        info = versions[0]
+        file_url = info.get("url", "")
+        if not file_url.startswith("https://upload.wikimedia.org/"):
+            raise PipelineError(
+                "Commons API returned an unexpected media URL for "
+                + spec["title"] + ": " + str(file_url)
+            )
+        ext = info.get("extmetadata") or {}
+        licence_field = ext.get("LicenseShortName") or {}
+        licence = html.unescape(re.sub(r"<[^>]*>", "", str(licence_field.get("value", "")))).strip()
+        accepted = LICENCE_MARKERS.get(spec["title"], [])
+        if not licence or not any(marker.casefold() in licence.casefold() for marker in accepted):
+            raise PipelineError(
+                f"Licence verification failed for {spec['title']}. "
+                f"Commons API reports {licence!r}; expected one of {accepted!r}."
+            )
+        verified[key] = {
+            "url": file_url,
+            "title": page.get("title", spec["title"]),
+            "license": licence,
+            "license_url": (ext.get("LicenseUrl") or {}).get("value", ""),
+        }
+    return verified
 
 def download(url, path, min_bytes=1000):
     r = get(url)
@@ -123,12 +200,18 @@ def download(url, path, min_bytes=1000):
     return path
 
 def obtain_assets(root):
-    verify_licences()
-    a = root / "assets"; a.mkdir(parents=True, exist_ok=True)
-    out = {k:download(v, a / ({"map":"baarle.svg","geo":"countries.geojson"}.get(k, k+".jpg")), 10000)
-           for k,v in ASSET_URLS.items()}
-    # Music and most SFX are pulled from stable Mixkit CDN file URLs.
-    # This bypasses the storefront page that returned HTTP 403 in Colab.
+    commons = verify_licences()
+    a = root / "assets"
+    a.mkdir(parents=True, exist_ok=True)
+    out = {}
+    for key, spec in WIKIMEDIA_ASSETS.items():
+        out[key] = download(
+            commons[key]["url"],
+            a / spec["filename"],
+            spec["min_bytes"],
+        )
+    out["geo"] = download(ASSET_URLS["geo"], a / "countries.geojson", 10000)
+    # Music and recorded SFX are fetched from direct Mixkit CDN file URLs.
     for key, item in MIXKIT_FILES.items():
         out[key] = download(item["url"], a / (key+".mp3"), 1200)
     return out
