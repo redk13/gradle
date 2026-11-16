@@ -276,12 +276,12 @@ def build_scenes(a, root, cutout):
 
     im=Image.new("RGBA",(CW,CH),C["ocean"]); add_head(im,"THE PLOT TWIST","It took until 1995","TO OFFICIALLY ESTABLISH THE LAST ENCLAVE BORDERS")
     d=ImageDraw.Draw(im); years=[(1198,"LAND DEAL"),(1648,"INTERNATIONAL STATUS"),(1843,"BORDER DESCRIBED"),(1995,"LAST LINES OFFICIAL")]
-    y=1240
+    y=1210
     for i,(yr,label) in enumerate(years):
-        col=C["be"] if i%2==0 else C["nl"]; panel(d,(230,y,CW-230,y+220),col)
-        centered(d,(500,y+110),str(yr),font(83),C["ink"] if i%2==0 else C["white"])
-        centered(d,(1350,y+110),label,font(43),C["ink"] if i%2==0 else C["white"]); y+=250
-    footer(im,"THE WORLD'S SLOWEST GROUP PROJECT.",y=2270)
+        col=C["be"] if i%2==0 else C["nl"]; panel(d,(230,y,CW-230,y+190),col)
+        centered(d,(500,y+95),str(yr),font(78),C["ink"] if i%2==0 else C["white"])
+        centered(d,(1350,y+95),label,font(40),C["ink"] if i%2==0 else C["white"]); y+=230
+    footer(im,"THE WORLD'S SLOWEST GROUP PROJECT.",y=2240)
     lines=["MAP: TOS / WIKIMEDIA COMMONS — PUBLIC DOMAIN",
            "HOUSE: JACK SOLEY / CC BY-SA 3.0  •  SHOP: KAYFABEBAALE / CC BY 4.0",
            "PAVEMENT: JACK SOLEY / CC BY-SA 4.0  •  NATURAL EARTH / PUBLIC DOMAIN",
