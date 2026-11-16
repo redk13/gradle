@@ -1,0 +1,8 @@
+# Colab runtime only. Not installed by GitHub Actions.
+chatterbox-tts==0.1.7
+transformers==5.2.0
+timm>=1.0.23
+pydub
+soundfile
+CairoSVG
+shapely

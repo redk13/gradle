@@ -1,0 +1,60 @@
+{
+  "project": "baarle-border-short",
+  "topic": "Baarle: The Border That Runs Through Your Front Door",
+  "niche": "geography and history map explainer",
+  "language": "en-US",
+  "format": {"width": 1080, "height": 1920, "fps": 60, "aspect_ratio": "9:16", "target_seconds": [60, 95]},
+  "voice": {"provider": "Chatterbox TTS", "model": "ChatterboxTTS default English", "speaker": "default model speaker", "seed": 42, "delivery": "natural conversational American English; requested male presentation; no time-stretching", "chunk_crossfade_ms": 95, "exaggeration": 0.35, "cfg_weight": 0.45},
+  "visual_style": {
+    "reference": "how BIG was the British Empire? vertical map/history explainer",
+    "reference_source_resolution": "720x1280",
+    "reference_fps": 60,
+    "palette": {"ocean": "#69D5E9", "land": "#F7FBFF", "ink": "#172D55", "belgium": "#F3B33D", "netherlands": "#8E66D9", "accent": "#FF6A4A"},
+    "map_motion": "smooth eased zoom and scene-to-scene change of geographic extent; no pulse, shake, wobble or warping",
+    "photo_motion": "gentle overall camera drift; keep complete subject and safe margins",
+    "safe_margin_px": 64,
+    "captions": "large concise English captions and short geographic callouts",
+    "comedy": "dry jokes in narration and brief visual asides; final sentence is the punchline"
+  },
+  "facts": {
+    "enclaves_total": 30,
+    "belgian_enclaves": 22,
+    "dutch_enclaves": 8,
+    "dutch_enclaves_inside_two_largest_belgian_enclaves": 7,
+    "origin_year": 1198,
+    "international_status_year": 1648,
+    "border_described_year": 1843,
+    "final_enclave_boundaries_officially_established_year": 1995,
+    "house_addresses": ["Loveren 2, Baarle-Hertog, Belgium", "Loveren 19, Baarle-Nassau, Netherlands"]
+  },
+  "scene_plan": [
+    {"visual": "world map opener, bright ocean, pale land, fast zoom toward Western Europe", "on_screen": "A BORDER THROUGH YOUR BEDROOM?"},
+    {"visual": "European map with Belgium and the Netherlands highlighted, Baarle callout", "on_screen": "TWO COUNTRIES. ONE TOWN."},
+    {"visual": "historic land-deal cards and compact timeline", "on_screen": "1198 → 1648 → 1843"},
+    {"visual": "official public-domain Baarle enclave map with count-up cards", "on_screen": "30 ENCLAVES / 22 + 8"},
+    {"visual": "real photograph of a border dividing a shop wall", "on_screen": "THE BORDER CUTS THROUGH BUILDINGS"},
+    {"visual": "real Loveren house photograph and separately cropped full-building subject", "on_screen": "ONE FRONT DOOR. TWO COUNTRIES."},
+    {"visual": "real pavement border-marker photograph and country labels", "on_screen": "STEP OVER THE BORDER"},
+    {"visual": "timeline and final joke with compact source credits", "on_screen": "THE WORLD'S SLOWEST GROUP PROJECT"}
+  ],
+  "assets": {
+    "enclave_map": "https://commons.wikimedia.org/wiki/Special:FilePath/Baarle-Nassau_-_Baarle-Hertog-en.svg",
+    "house": "https://commons.wikimedia.org/wiki/Special:FilePath/House_Shared_By_Two_Countries.jpg",
+    "house_fallback": "https://commons.wikimedia.org/wiki/Special:FilePath/Baarle-Hertog_Loveren_2_-_150095_-_onroerenderfgoed.jpg",
+    "shop": "https://commons.wikimedia.org/wiki/Special:FilePath/Baarle-Hertog_and_Baarle-Nassau_border.jpg",
+    "pavement": "https://commons.wikimedia.org/wiki/Special:FilePath/B-NL_International_Border_at_Baarle.jpg",
+    "natural_earth": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson",
+    "music_page": "https://pixabay.com/music/suspense-calm-suspenseful-background-music-loop-433787/",
+    "sfx_pages": {
+      "whoosh": "https://freesound.org/people/Sadiquecat/sounds/855733/",
+      "paper": "https://freesound.org/people/Mihacappy/sounds/814247/",
+      "stamp": "https://freesound.org/people/Mihacappy/sounds/814248/",
+      "footstep": "https://freesound.org/people/Rudmer_Rotteveel/sounds/316919/"
+    }
+  },
+  "background_removal": {"model": "ZhengPeng7/BiRefNet_HR", "inference_size": [2048, 2048], "soft_alpha": true, "keep_small_details": true, "automatic_completeness_qa": true, "fallback_asset": "house_fallback"},
+  "audio_mix": {"recorded_music_gain_db": -26, "recorded_sfx_gain_db": -19, "voice_priority": true, "no_unintended_silence": true},
+  "credits_file": "SOURCES_AND_LICENSES.md",
+  "render_location": "Google Colab only",
+  "github_actions_policy": "lightweight syntax, unit tests and dependency verification only"
+}
