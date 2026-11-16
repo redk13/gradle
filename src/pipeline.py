@@ -130,23 +130,22 @@ def download(url, path, min_bytes=1000):
     path.write_bytes(r.content)
     return path
 
-def media_preview_url(page, kind):
+def media_preview_url(page):
     html = get(page, 60).text.replace("\\/", "/").replace("\\u0026", "&")
-    if kind == "pixabay":
-        pats = [r"https?://cdn\.pixabay\.com/audio/[^\"' <>]+?\.mp3(?:\?[^\"' <>]*)?"]
-    else:
-        pats = [
-            r"https?://cdn\.freesound\.org/previews/[^\"' <>]+?\.mp3(?:\?[^\"' <>]*)?",
-            r"https?://freesound\.org/data/previews/[^\"' <>]+?\.mp3(?:\?[^\"' <>]*)?"
-        ]
+    # Freesound pages embed generated preview URLs in their script/JSON data.
+    pats = [
+        r"https?://cdn\\.freesound\\.org/previews/[^\\"' <>]+?\\.mp3(?:\\?[^\\"' <>]*)?",
+        r"https?://freesound\\.org/data/previews/[^\\"' <>]+?\\.mp3(?:\\?[^\\"' <>]*)?",
+        r'"preview-hq-mp3"\\s*:\\s*"([^"]+)"',
+        r'"preview-lq-mp3"\\s*:\\s*"([^"]+)"'
+    ]
     found = []
-    for pat in pats: found += re.findall(pat, html, flags=re.I)
-    if not found:
-        rel = re.findall(r"(?:src|href)=[\"']([^\"']+\.mp3[^\"']*)[\"']", html, flags=re.I)
-        found = [urljoin(page, u) for u in rel]
+    for pat in pats:
+        found += re.findall(pat, html, flags=re.I)
+    found = [urljoin(page, u.replace("\\\\/", "/")) for u in found]
     found = list(dict.fromkeys(found))
     if not found:
-        raise PipelineError("No real recorded MP3 preview was exposed by the source page: " + page)
+        raise PipelineError("No real recorded Freesound MP3 preview was exposed by the source page: " + page)
     found.sort(key=lambda u: ("hq" in u.lower(), len(u)), reverse=True)
     return found[0]
 
@@ -161,7 +160,7 @@ def obtain_assets(root):
         out[key] = download(item["url"], a / (key+".mp3"), 1200)
     # Stamp is a separate, independently licensed CC0 recording on Freesound.
     for key, page in PAGES.items():
-        url = media_preview_url(page, "freesound")
+        url = media_preview_url(page)
         out[key] = download(url, a / (key+".mp3"), 1200)
     return out
 
