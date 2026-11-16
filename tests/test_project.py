@@ -36,6 +36,15 @@ class ProjectTests(unittest.TestCase):
     def test_pipeline_syntax(self) -> None:
         compile((ROOT / "src" / "pipeline.py").read_text(encoding="utf-8"), "pipeline.py", "exec")
 
+    def test_audio_sources_bypass_blocked_pixabay_page(self) -> None:
+        source = (ROOT / "src" / "pipeline.py").read_text(encoding="utf-8")
+        config = json.loads((ROOT / "config" / "baarle.json").read_text(encoding="utf-8"))
+        self.assertNotIn("https://pixabay.com/music/", source)
+        self.assertIn("MIXKIT_FILES", source)
+        self.assertIn("https://assets.mixkit.co/music/preview/mixkit-secret-garden-595.mp3", source)
+        self.assertIn("direct_file", json.dumps(config["assets"]["music"]))
+        self.assertEqual(set(config["assets"]["sfx"]), {"whoosh", "paper", "footstep", "stamp"})
+
 
 if __name__ == "__main__":
     unittest.main()
