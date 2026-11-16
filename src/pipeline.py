@@ -134,15 +134,15 @@ def media_preview_url(page):
     html = get(page, 60).text.replace("\\/", "/").replace("\\u0026", "&")
     # Freesound pages embed generated preview URLs in their script/JSON data.
     pats = [
-        r"https?://cdn\\.freesound\\.org/previews/[^\\"' <>]+?\\.mp3(?:\\?[^\\"' <>]*)?",
-        r"https?://freesound\\.org/data/previews/[^\\"' <>]+?\\.mp3(?:\\?[^\\"' <>]*)?",
-        r'"preview-hq-mp3"\\s*:\\s*"([^"]+)"',
-        r'"preview-lq-mp3"\\s*:\\s*"([^"]+)"'
+        r"https?://cdn\.freesound\.org/previews/[^\"' <>]+?\.mp3(?:\?[^\"' <>]*)?",
+        r"https?://freesound\.org/data/previews/[^\"' <>]+?\.mp3(?:\?[^\"' <>]*)?",
+        r'"preview-hq-mp3"\s*:\s*"([^"]+)"',
+        r'"preview-lq-mp3"\s*:\s*"([^"]+)"'
     ]
     found = []
     for pat in pats:
         found += re.findall(pat, html, flags=re.I)
-    found = [urljoin(page, u.replace("\\\\/", "/")) for u in found]
+    found = [urljoin(page, u.replace("\\/", "/")) for u in found]
     found = list(dict.fromkeys(found))
     if not found:
         raise PipelineError("No real recorded Freesound MP3 preview was exposed by the source page: " + page)
