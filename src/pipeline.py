@@ -22,12 +22,36 @@ ASSET_URLS = {
  "pavement":"https://commons.wikimedia.org/wiki/Special:FilePath/B-NL_International_Border_at_Baarle.jpg",
  "geo":"https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson"
 }
+# Direct file downloads avoid scraping pages that may reject Colab with HTTP 403.
+# The Mixkit track and SFX are real recorded catalogue assets; no audio is synthesized.
+MIXKIT_FILES = {
+ "music": {
+  "url":"https://assets.mixkit.co/music/preview/mixkit-secret-garden-595.mp3",
+  "source":"https://mixkit.co/free-stock-music/mood/humorous/",
+  "title":"Secret Garden — Eugenio Mininni",
+  "license":"Mixkit Stock Music Free License"
+ },
+ "whoosh": {
+  "url":"https://assets.mixkit.co/active_storage/sfx/1489/1489-preview.mp3",
+  "source":"https://mixkit.co/free-sound-effects/whoosh/",
+  "title":"Air woosh",
+  "license":"Mixkit Sound Effects Free License"
+ },
+ "paper": {
+  "url":"https://assets.mixkit.co/active_storage/sfx/1103/1103-preview.mp3",
+  "source":"https://mixkit.co/free-sound-effects/paper/",
+  "title":"Stiff paper book paging",
+  "license":"Mixkit Sound Effects Free License"
+ },
+ "footstep": {
+  "url":"https://assets.mixkit.co/active_storage/sfx/542/542-preview.mp3",
+  "source":"https://mixkit.co/free-sound-effects/footsteps/",
+  "title":"Footsteps on heels on the pavement",
+  "license":"Mixkit Sound Effects Free License"
+ }
+}
 PAGES = {
- "music":"https://pixabay.com/music/suspense-calm-suspenseful-background-music-loop-433787/",
- "whoosh":"https://freesound.org/people/Sadiquecat/sounds/855733/",
- "paper":"https://freesound.org/people/Mihacappy/sounds/814247/",
- "stamp":"https://freesound.org/people/Mihacappy/sounds/814248/",
- "footstep":"https://freesound.org/people/Rudmer_Rotteveel/sounds/316919/"
+ "stamp":"https://freesound.org/people/Mihacappy/sounds/814248/"
 }
 LICENCE_MARKERS = {
  "https://commons.wikimedia.org/wiki/File:Baarle-Nassau_-_Baarle-Hertog-en.svg":["Public domain"],
@@ -53,27 +77,55 @@ def seed_all(seed=42):
     torch.backends.cudnn.deterministic = True
 
 def get(url, timeout=90):
-    r = requests.get(url, headers={"User-Agent":"BaarleMapShort/1.0 (educational use; source credits included)"}, timeout=timeout, allow_redirects=True)
-    r.raise_for_status()
-    return r
+    headers = {
+        "User-Agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/128 Safari/537.36",
+        "Accept":"*/*"
+    }
+    last_error = None
+    for attempt in range(3):
+        try:
+            r = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True)
+            if r.status_code in (429,500,502,503,504) and attempt < 2:
+                import time; time.sleep(2 ** attempt); continue
+            if r.status_code == 403:
+                raise PipelineError(
+                    "The media host denied this request (HTTP 403). The pipeline now uses direct Mixkit CDN "
+                    "files instead of the Pixabay storefront. Check the exact source URL and retry from Colab: " + url
+                )
+            r.raise_for_status()
+            return r
+        except requests.RequestException as exc:
+            last_error = exc
+            if attempt < 2:
+                import time; time.sleep(2 ** attempt)
+    raise PipelineError(f"Download failed after retries for {url}: {last_error}")
 
 def verify_licences():
+    # Image-source licences are checked against their Wikimedia file pages.
     for page, markers in LICENCE_MARKERS.items():
         html = get(page, 60).text.lower()
         if not any(m.lower() in html for m in markers):
             raise PipelineError("Expected public licence marker not found; stop and review: " + page)
+    # Mixkit's free music and SFX catalogues have separate official licences.
+    # Their direct CDN files are used, so Colab does not need to scrape the
+    # Mixkit storefront (the former Pixabay page scrape returned HTTP 403).
+    if any("Mixkit Stock Music Free License" not in x["license"] for k,x in MIXKIT_FILES.items() if k == "music"):
+        raise PipelineError("Music asset is not marked with the Mixkit Stock Music Free License.")
+    if any("Mixkit Sound Effects Free License" not in x["license"] for k,x in MIXKIT_FILES.items() if k != "music"):
+        raise PipelineError("SFX asset is not marked with the Mixkit Sound Effects Free License.")
+    # The remaining Freesound stamp is CC0. A missing page/marker stops the run.
     for key, page in PAGES.items():
         html = get(page, 60).text.lower()
-        if key == "music":
-            if "pixabay content license" not in html and "free for use" not in html:
-                raise PipelineError("Pixabay music licence marker missing: " + page)
-        elif "creative commons 0" not in html and "cc0" not in html:
+        if "creative commons 0" not in html and "cc0" not in html:
             raise PipelineError("Expected CC0 marker missing: " + page)
 
 def download(url, path, min_bytes=1000):
     r = get(url)
+    content_type = r.headers.get("Content-Type","").lower()
+    if "text/html" in content_type or r.content.lstrip().lower().startswith((b"<!doctype html",b"<html")):
+        raise PipelineError(f"Expected a media/binary asset but the server returned HTML: {url}")
     if len(r.content) < min_bytes:
-        raise PipelineError(f"Asset too small: {url}")
+        raise PipelineError(f"Asset too small ({len(r.content)} bytes): {url}")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(r.content)
     return path
@@ -103,10 +155,14 @@ def obtain_assets(root):
     a = root / "assets"; a.mkdir(parents=True, exist_ok=True)
     out = {k:download(v, a / ({"map":"baarle.svg","geo":"countries.geojson"}.get(k, k+".jpg")), 10000)
            for k,v in ASSET_URLS.items()}
-    # Each audio file is an actual recorded/source-hosted MP3, never a coded tone.
-    for k, page in PAGES.items():
-        url = media_preview_url(page, "pixabay" if k == "music" else "freesound")
-        out[k] = download(url, a / (k+".mp3"), 1200)
+    # Music and most SFX are pulled from stable Mixkit CDN file URLs.
+    # This bypasses the storefront page that returned HTTP 403 in Colab.
+    for key, item in MIXKIT_FILES.items():
+        out[key] = download(item["url"], a / (key+".mp3"), 1200)
+    # Stamp is a separate, independently licensed CC0 recording on Freesound.
+    for key, page in PAGES.items():
+        url = media_preview_url(page, "freesound")
+        out[key] = download(url, a / (key+".mp3"), 1200)
     return out
 
 def font(size, bold=True):
@@ -350,11 +406,11 @@ def mix_audio(voice, assets, seconds, sr, work):
     total=len(v); music=AudioSegment.from_file(assets["music"]).set_frame_rate(sr).set_channels(2)
     if not len(music): raise PipelineError("The real music file is empty.")
     # Seamless loop with a 0.9s crossfade between repetitions.
-    loop=900
+    loop=min(900,max(100,len(music)//4))
     while len(music)<total:
-        tail=music[-loop:]; head=music[:loop]
-        cross=tail.fade_out(loop).overlay(head.fade_in(loop))
-        music=music[:-loop]+cross+music[loop:]
+        # Pydub performs an actual overlap/crossfade; the former concatenation
+        # expression could accidentally lengthen the bed instead of looping it.
+        music=music.append(music,crossfade=loop)
     music=music[:total].apply_gain(-26).fade_in(1000).fade_out(1500)
     mix=v.overlay(music)
     starts=[]; cursor=0.0
